@@ -305,6 +305,8 @@ fn default_safety_margin() -> f64 {
 pub struct OptimizeLimitsResponse {
     pub cpu: crate::simulation::OptimizationBuffer,
     pub ram: crate::simulation::OptimizationBuffer,
+    pub ledger_read: crate::simulation::OptimizationBuffer,
+    pub ledger_write: crate::simulation::OptimizationBuffer,
     pub recommended: crate::simulation::SorobanResources,
 }
 
@@ -398,30 +400,33 @@ fn to_report(result: &SimulationResult, insights_engine: &InsightsEngine) -> Res
                 })
                 .collect()
         }),
-        ttl_analysis: result.ttl_analysis.as_ref().map(|ttl| TtlAnalysisApiReport {
-            current_ledger: ttl.current_ledger,
-            touched_entries: ttl
-                .touched_entries
-                .iter()
-                .map(|e| TtlEntryApiReport {
-                    key: e.key.clone(),
-                    live_until_ledger: e.live_until_ledger,
-                    remaining_ledgers: e.remaining_ledgers,
-                })
-                .collect(),
-            extend_ttl_suggestions: ttl
-                .extend_ttl_suggestions
-                .iter()
-                .map(|s| ExtendTtlSuggestionApi {
-                    key: s.key.clone(),
-                    current_live_until_ledger: s.current_live_until_ledger,
-                    remaining_ledgers: s.remaining_ledgers,
-                    extend_to_ledger: s.extend_to_ledger,
-                    ledgers_to_extend_by: s.ledgers_to_extend_by,
-                    suggested_operation: s.suggested_operation.clone(),
-                })
-                .collect(),
-        }),
+        ttl_analysis: result
+            .ttl_analysis
+            .as_ref()
+            .map(|ttl| TtlAnalysisApiReport {
+                current_ledger: ttl.current_ledger,
+                touched_entries: ttl
+                    .touched_entries
+                    .iter()
+                    .map(|e| TtlEntryApiReport {
+                        key: e.key.clone(),
+                        live_until_ledger: e.live_until_ledger,
+                        remaining_ledgers: e.remaining_ledgers,
+                    })
+                    .collect(),
+                extend_ttl_suggestions: ttl
+                    .extend_ttl_suggestions
+                    .iter()
+                    .map(|s| ExtendTtlSuggestionApi {
+                        key: s.key.clone(),
+                        current_live_until_ledger: s.current_live_until_ledger,
+                        remaining_ledgers: s.remaining_ledgers,
+                        extend_to_ledger: s.extend_to_ledger,
+                        ledgers_to_extend_by: s.ledgers_to_extend_by,
+                        suggested_operation: s.suggested_operation.clone(),
+                    })
+                    .collect(),
+            }),
         nutrition: NutritionReport {
             efficiency_score: insights_report.efficiency_score,
             insights: insights_report
@@ -623,6 +628,8 @@ async fn optimize_limits(
     Ok(Json(OptimizeLimitsResponse {
         cpu: report.cpu,
         ram: report.ram,
+        ledger_read: report.ledger_read,
+        ledger_write: report.ledger_write,
         recommended: report.recommended,
     }))
 }
@@ -821,14 +828,13 @@ async fn fee_recommend(
 
     // Generate prediction
     let prediction = state.fee_analytics_engine.predict(&samples, current_ledger);
-    let market_conditions = state.fee_analytics_engine.get_market_conditions(&samples, current_ledger);
+    let market_conditions = state
+        .fee_analytics_engine
+        .get_market_conditions(&samples, current_ledger);
     let model_breakdown = state.fee_analytics_engine.get_model_breakdown(&samples);
 
     // Determine recommended bid based on prediction
-    let (recommended_bid, expected_ledgers) = (
-        prediction.priority_bid,
-        1,
-    );
+    let (recommended_bid, expected_ledgers) = (prediction.priority_bid, 1);
 
     Ok(Json(FeeRecommendationResponse {
         recommended_bid,
@@ -907,7 +913,9 @@ async fn fee_analytics(
         .unwrap_or(0);
 
     let prediction = state.fee_analytics_engine.predict(&samples, current_ledger);
-    let market_conditions = state.fee_analytics_engine.get_market_conditions(&samples, current_ledger);
+    let market_conditions = state
+        .fee_analytics_engine
+        .get_market_conditions(&samples, current_ledger);
     let model_breakdown = state.fee_analytics_engine.get_model_breakdown(&samples);
 
     let response = serde_json::json!({
@@ -1142,7 +1150,10 @@ async fn main() {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(3600)); // Every hour
             loop {
                 interval.tick().await;
-                if let Err(e) = cleanup_store.cleanup_old_samples(retention_days as i32).await {
+                if let Err(e) = cleanup_store
+                    .cleanup_old_samples(retention_days as i32)
+                    .await
+                {
                     tracing::error!(error = %e, "Failed to cleanup old fee samples");
                 }
             }

@@ -76,11 +76,11 @@ impl ProviderRegistry {
 
     /// Return the list of providers that are currently available for requests,
     /// in priority order (skipping tripped providers whose cooldown hasn't elapsed).
-    pub async fn healthy_providers(&self) -> Vec<&RpcProvider> {
+    pub async fn healthy_providers(&self) -> Vec<RpcProvider> {
         let mut available = Vec::new();
         for state in &self.states {
             if self.is_available(state).await {
-                available.push(&state.provider);
+                available.push(state.provider.clone());
             }
         }
         available

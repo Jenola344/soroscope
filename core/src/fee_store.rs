@@ -120,7 +120,10 @@ impl FeeStore {
     }
 
     /// Get recent ledger fee samples (most recent first)
-    pub async fn get_recent_samples(&self, limit: i64) -> Result<Vec<LedgerFeeSample>, FeeStoreError> {
+    pub async fn get_recent_samples(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<LedgerFeeSample>, FeeStoreError> {
         let samples = sqlx::query_as!(
             LedgerFeeSample,
             r#"
@@ -213,7 +216,7 @@ impl FeeStore {
         .await?;
 
         let deleted = result.rows_affected();
-        
+
         if deleted > 0 {
             tracing::info!(deleted, "Cleaned up old fee samples");
         }
@@ -302,14 +305,7 @@ mod tests {
 
     #[test]
     fn test_transaction_fee_record_creation() {
-        let record = TransactionFeeRecord::new(
-            12345,
-            "abc123".to_string(),
-            100,
-            100,
-            50,
-            true,
-        );
+        let record = TransactionFeeRecord::new(12345, "abc123".to_string(), 100, 100, 50, true);
 
         assert_eq!(record.ledger_sequence, 12345);
         assert_eq!(record.tx_hash, "abc123");

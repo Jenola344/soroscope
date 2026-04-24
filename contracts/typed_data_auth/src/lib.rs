@@ -1,6 +1,6 @@
 #![no_std]
 
-use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, crypto::Signature};
+use soroban_sdk::{contract, contractimpl, crypto::Signature, Address, Bytes, BytesN, Env, String};
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -43,14 +43,17 @@ impl TypedDataAuth {
         signer.require_auth();
 
         // Log the successful authorization (optional)
-        env.events().publish(("transfer_authorized",), (signer, transfer.from, transfer.to, transfer.amount));
+        env.events().publish(
+            ("transfer_authorized",),
+            (signer, transfer.from, transfer.to, transfer.amount),
+        );
     }
 
     /// Computes the domain separator hash.
     fn domain_separator_hash(env: &Env, domain: &Domain) -> BytesN<32> {
-        let type_hash = env.crypto().sha256(
-            &env.bytes(b"EIP712Domain(string name,string version,u32 chainId,Address verifyingContract)")
-        );
+        let type_hash = env.crypto().sha256(&env.bytes(
+            b"EIP712Domain(string name,string version,u32 chainId,Address verifyingContract)",
+        ));
         let name_hash = env.crypto().sha256(&env.bytes(domain.name.as_bytes()));
         let version_hash = env.crypto().sha256(&env.bytes(domain.version.as_bytes()));
         let chain_id_bytes = domain.chain_id.to_be_bytes();
@@ -68,9 +71,9 @@ impl TypedDataAuth {
 
     /// Computes the struct hash for Transfer.
     fn struct_hash(env: &Env, transfer: &Transfer) -> BytesN<32> {
-        let type_hash = env.crypto().sha256(
-            &env.bytes(b"Transfer(address from,address to,int128 amount)")
-        );
+        let type_hash = env
+            .crypto()
+            .sha256(&env.bytes(b"Transfer(address from,address to,int128 amount)"));
         let from_bytes = transfer.from.to_raw().to_be_bytes();
         let to_bytes = transfer.to.to_raw().to_be_bytes();
         let amount_bytes = transfer.amount.to_be_bytes();
@@ -103,8 +106,8 @@ impl TypedDataAuth {
 #[cfg(test)]
 mod test {
     use super::*;
-    use soroban_sdk::testutils::{Address as _, BytesN as _};
     use soroban_sdk::crypto::Signature;
+    use soroban_sdk::testutils::{Address as _, BytesN as _};
 
     #[test]
     fn test_domain_separator_hash() {

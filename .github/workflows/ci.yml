@@ -43,7 +43,7 @@ jobs:
       - name: Install Soroban CLI
         run: cargo install soroban-cli --version 22.0.0 --locked
       - name: Run Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
 
   # ------------------------------------------------------------------
   # Job 3: Tests (Unit & Integration)
@@ -62,7 +62,7 @@ jobs:
       - name: Install Soroban CLI
         run: cargo install soroban-cli --version 22.0.0 --locked
       - name: Run Tests
-        run: cargo test
+        run: cargo test --locked
 
   # ------------------------------------------------------------------
   # Job 4: Frontend (Lint & Typecheck)

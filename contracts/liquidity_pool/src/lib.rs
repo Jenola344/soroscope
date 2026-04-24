@@ -232,9 +232,10 @@ impl LiquidityPool {
         e.storage()
             .instance()
             .set(&DataKey::BaseFeeBasisPoints, &DEFAULT_BASE_FEE_BPS);
-        e.storage()
-            .instance()
-            .set(&DataKey::FeeUpdateTimelockLedgers, &DEFAULT_FEE_TIMELOCK_LEDGERS);
+        e.storage().instance().set(
+            &DataKey::FeeUpdateTimelockLedgers,
+            &DEFAULT_FEE_TIMELOCK_LEDGERS,
+        );
         Ok(())
     }
 
@@ -341,7 +342,9 @@ impl LiquidityPool {
         let prev = match previous_price {
             Some(p) if p > 0 => p,
             _ => {
-                e.storage().instance().set(&DataKey::LastVolatilityBps, &0i128);
+                e.storage()
+                    .instance()
+                    .set(&DataKey::LastVolatilityBps, &0i128);
                 return Ok(None);
             }
         };
@@ -382,10 +385,15 @@ impl LiquidityPool {
             executable_after_ledger: execute_after,
             based_on_volatility_bps: volatility_bps,
         };
-        e.storage().instance().set(&DataKey::PendingFeeUpdate, &pending);
+        e.storage()
+            .instance()
+            .set(&DataKey::PendingFeeUpdate, &pending);
         let scheduled_by = e.current_contract_address();
         e.events().publish(
-            (String::from_str(&e, "fee_update_scheduled"), scheduled_by.clone()),
+            (
+                String::from_str(&e, "fee_update_scheduled"),
+                scheduled_by.clone(),
+            ),
             FeeUpdateScheduledEvent {
                 scheduled_by,
                 old_fee_bps: current_fee,

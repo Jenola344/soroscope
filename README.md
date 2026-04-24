@@ -12,7 +12,6 @@ Building on Soroban requires careful resource management. SoroScope provides a "
 - `/core`: Rust-based CLI for simulating and profiling contracts.
 - `/web`: Next.js + Tailwind CSS dashboard for visualizing resource heatmaps.
 - `/contracts`: Sample Soroban contracts used for benchmarking.
-- `/docs`: Additional documentation and design notes.
 - `/.github/workflows`: CI/CD pipelines.
 
 ## ⚙️ Getting Started
@@ -34,23 +33,16 @@ cd soroscope
 
 The **core** crate is a Rust binary that will power SoroScope's resource profiling.
 
-### Build
+### Build & Run
 ```bash
+# Build the binary
 cargo build -p soroscope-core
+
+# Run the server (RUST_LOG=info is required to see API logs)
+RUST_LOG=info cargo run -p soroscope-core
 ```
 
-### Run
-```bash
-cargo run -p soroscope-core
-```
-
-You should see:
-
-```text
-SoroScope CLI Initialized
-```
-
-This will evolve into a full resource-profiler CLI for Soroban contracts.
+The server listens on `http://localhost:8080` by default.
 
 ---
 
@@ -82,24 +74,22 @@ npm start
 
 ## 📦 Contracts (`/contracts`)
 
-This folder will contain sample Soroban contracts used to:
-- Benchmark typical workloads
-- Compare different implementation strategies
-- Validate SoroScope's profiling output
+This folder contains sample Soroban contracts. To build them for analysis:
 
-You can add your own contracts here and wire them into the CLI + dashboard.
+```bash
+# Build all contracts to WASM
+cargo build --target wasm32-unknown-unknown --release
+```
 
----
-
-## 📚 Documentation (`/docs`)
-
-Additional design docs, ADRs, and deep-dive explanations about how SoroScope collects and interprets resource data will live in `/docs`.
+The resulting `.wasm` files will be located in `target/wasm32-unknown-unknown/release/`. You can upload these to the Web Dashboard for profiling.
 
 ---
 
-## 📅 Roadmap (Drips Wave Jan 21')
-- **Phase 1:** Core CLI engine for resource extraction.
-- **Phase 2:** Visual resource heatmap for Rust functions.
+
+
+## 📅 Roadmap (2026)
+- **Phase 1 [COMPLETED]:** Core CLI engine for resource extraction.
+- **Phase 2 [IN PROGRESS]:** Integration of Frontend dashboard with Backend simulation engine.
 - **Phase 3:** Automated optimization recommendations.
 
 ---
@@ -129,16 +119,11 @@ From the **repo root**:
 ---
 
 ## 🤝 Contributing
-We are participating in the **Drips Wave Stellar Program**. Check out our open issues to start earning points!
-
-Contributions are welcome via:
-- Issues (bug reports, feature ideas)
-- Pull Requests (code, docs, tests)
-- Feedback on UX and developer experience
-
-Please:
-- Keep changes small and focused
-- Add or update documentation when you change behavior
+Contributions are welcome! Please read our [**Contributing Guide**](./CONTRIBUTING.md) to learn about our development process, coding standards, and how to submit a pull request.
 
 ---
-Built with ❤️ by **SoroLabs**
+### 🧪 Live Analysis
+SoroScope now supports live simulation via the web dashboard. Connect your wallet, select a function, and get your **Contract Nutrition Label** instantly.
+
+---
+Built with ❤️ by **SoroLabs**. Powered by the Soroban ecosystem.

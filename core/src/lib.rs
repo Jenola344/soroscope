@@ -1,5 +1,6 @@
 pub mod comparison;
 pub mod errors;
+pub mod gas_golfing;
 pub mod insights;
 pub mod parser;
 pub mod rpc_provider;

@@ -16,7 +16,7 @@ use crate::errors::AppError;
 use crate::fee_analytics::{FeeAnalyticsEngine, MarketConditions, ModelBreakdown};
 use crate::fee_collector::{FeeCollector, FeeCollectorConfig};
 use crate::fee_store::FeeStore;
-use crate::insights::InsightsEngine;
+use crate::gas_golfing::GasGolfingAnalyzer;
 use crate::jobs::{
     JobId, JobQueue, JobQueueConfig, JobWorker, SubmitJobRequest, SubmitJobResponse,
 };
@@ -189,6 +189,7 @@ pub struct AppState {
     engine: SimulationEngine,
     cache: Arc<SimulationCache>,
     insights_engine: InsightsEngine,
+    gas_golfing_analyzer: GasGolfingAnalyzer,
     /// Simulation timeout for RPC requests
     simulation_timeout: std::time::Duration,
     /// Job queue for background task processing
@@ -818,6 +819,62 @@ fn write_temp_wasm(bytes: &[u8]) -> Result<std::path::PathBuf, AppError> {
     Ok(path)
 }
 
+// ── Gas Golfing Types ─────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct GasGolfingRequest {
+    /// Base64-encoded WASM bytecode
+    #[schema(example = "AGFzbQEAAAABBgFgAX8BfwMCAQAFAwMADAEAAQgBAUcBAQABAQgBAUcBAQACAgcABAEGCw==")]
+    pub wasm_bytes: String,
+    /// Contract name for identification
+    #[schema(example = "my_contract")]
+    pub contract_name: String,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct GasGolfingResponse {
+    pub report: crate::gas_golfing::GasGolfingReport,
+}
+
+// ── Gas Golfing Handler ───────────────────────────────────────────────────
+
+#[utoipa::path(
+    post,
+    path = "/analyze/gas-golfing",
+    request_body = GasGolfingRequest,
+    responses(
+        (status = 200, description = "Gas golfing analysis completed", body = GasGolfingResponse),
+        (status = 400, description = "Invalid WASM data"),
+        (status = 500, description = "Analysis failed")
+    ),
+    tag = "Analysis"
+)]
+async fn analyze_gas_golfing(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<GasGolfingRequest>,
+) -> Result<Json<GasGolfingResponse>, AppError> {
+    use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+
+    tracing::info!(
+        contract_name = %payload.contract_name,
+        "Received gas golfing analysis request"
+    );
+
+    let wasm_bytes = BASE64
+        .decode(&payload.wasm_bytes)
+        .map_err(|e| AppError::BadRequest(format!("Invalid base64 WASM data: {}", e)))?;
+
+    let contract_name = payload.contract_name.clone();
+
+    let report = tokio::task::spawn_blocking(move || {
+        state.gas_golfing_analyzer.analyze_wasm(&wasm_bytes, &contract_name)
+    })
+    .await
+    .map_err(|e| AppError::Internal(format!("Gas golfing analysis task panicked: {}", e)))?;
+
+    Ok(Json(GasGolfingResponse { report }))
+}
+
 // ── Fee Market API Handlers ──────────────────────────────────────────────
 
 #[utoipa::path(
@@ -959,7 +1016,7 @@ async fn fee_analytics(
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        analyze, analyze_wasm, optimize_limits, compare_handler,
+        analyze, analyze_wasm, optimize_limits, compare_handler, analyze_gas_golfing,
         auth::challenge_handler, auth::verify_handler,
         jobs::submit_job_handler, jobs::get_job_handler, jobs::cancel_job_handler,
         fee_recommend, fee_history, fee_analytics
@@ -968,6 +1025,8 @@ async fn fee_analytics(
         AnalyzeRequest, AnalyzeWasmRequest, ResourceReport,
         OptimizeLimitsRequest, OptimizeLimitsResponse,
         CompareApiResponse, RegressionReport, ResourceDelta, RegressionFlag,
+        GasGolfingRequest, GasGolfingResponse,
+        crate::gas_golfing::GasGolfingReport, crate::gas_golfing::GasGolfingSuggestion,
         auth::ChallengeRequest, auth::ChallengeResponse,
         auth::VerifyRequest, auth::VerifyResponse,
         jobs::Job, jobs::JobStatus, jobs::JobType, jobs::JobPayload,
@@ -1304,6 +1363,7 @@ async fn main() {
         ),
         cache: SimulationCache::new(),
         insights_engine: InsightsEngine::new(),
+        gas_golfing_analyzer: GasGolfingAnalyzer::new(),
         simulation_timeout,
         job_queue,
         fee_analytics_engine,
@@ -1317,6 +1377,7 @@ async fn main() {
         .route("/analyze/wasm", post(analyze_wasm))
         .route("/analyze/optimize-limits", post(optimize_limits))
         .route("/analyze/compare", post(compare_handler))
+        .route("/analyze/gas-golfing", post(analyze_gas_golfing))
         .route_layer(middleware::from_fn(auth::auth_middleware));
 
     let app = Router::new()

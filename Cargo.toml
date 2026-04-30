@@ -10,5 +10,10 @@ members = [
     "contracts/cpu_heavy",
     "contracts/cross_call",
     "contracts/factory",
-    "contracts/emergency_guard",
+    "contracts/math",
+    "contracts/typed_data_auth",
+    "contracts/governance",
+    "contracts/cdp",
+    "contracts/batch_transfer",
+    "contracts/private_transfer",
 ]

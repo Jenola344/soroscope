@@ -3564,6 +3564,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "soroscope-concentrated-amm"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+]
+
+[[package]]
 name = "soroscope-core"
 version = "0.1.0"
 dependencies = [

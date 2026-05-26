@@ -57,11 +57,6 @@ impl TypedDataAuth {
 impl TypedDataAuth {
     /// Computes the domain separator hash.
     fn domain_separator_hash(env: &Env, domain: &Domain) -> BytesN<32> {
-        let _type_hash = env.crypto().sha256(&env.bytes(
-            b"EIP712Domain(string name,string version,u32 chainId,Address verifyingContract)",
-        ));
-        let _name_hash = env.crypto().sha256(&env.bytes(domain.name.as_bytes()));
-        let _version_hash = env.crypto().sha256(&env.bytes(domain.version.as_bytes()));
         
         let mut data = Bytes::new(env);
         data.append(&Bytes::from_slice(
@@ -76,9 +71,6 @@ impl TypedDataAuth {
 
     /// Computes the struct hash for Transfer.
     fn struct_hash(env: &Env, transfer: &Transfer) -> BytesN<32> {
-        let _type_hash = env
-            .crypto()
-            .sha256(&env.bytes(b"Transfer(address from,address to,int128 amount)"));
         
         let mut data = Bytes::new(env);
         data.append(&Bytes::from_slice(

@@ -1,7 +1,5 @@
 #![no_std]
-use soroban_sdk::{
-    contract, contractimpl, contracttype, token, Address, Env, String,
-};
+use soroban_sdk::{contract, contractimpl, contracttype, token, Address, Env, String};
 
 pub use soroscope_error_codes::ContractError;
 use soroscope_math::Fixed;
@@ -149,11 +147,7 @@ fn multiply_amount(amount: i128, multiplier: Fixed) -> Result<i128, ContractErro
 
 // ── Compounding Multiplier Calculation ────────────────────────
 
-fn calculate_multiplier(
-    config: &StakingConfig,
-    t1: u32,
-    t2: u32,
-) -> Result<Fixed, ContractError> {
+fn calculate_multiplier(config: &StakingConfig, t1: u32, t2: u32) -> Result<Fixed, ContractError> {
     if t2 <= t1 {
         return Ok(Fixed::ONE);
     }
@@ -282,8 +276,12 @@ impl StakingRewards {
             .checked_add(amount)
             .ok_or(ContractError::Overflow)?;
 
-        e.storage().persistent().set(&DataKey::UserState(user.clone()), &state);
-        e.storage().persistent().extend_ttl(&DataKey::UserState(user.clone()), 10000, 10000);
+        e.storage()
+            .persistent()
+            .set(&DataKey::UserState(user.clone()), &state);
+        e.storage()
+            .persistent()
+            .extend_ttl(&DataKey::UserState(user.clone()), 10000, 10000);
         e.storage().instance().extend_ttl(10000, 10000);
 
         e.events().publish(
@@ -319,10 +317,16 @@ impl StakingRewards {
             .ok_or(ContractError::Overflow)?;
 
         if state.staked_amount == 0 && state.accrued_rewards == 0 {
-            e.storage().persistent().remove(&DataKey::UserState(user.clone()));
+            e.storage()
+                .persistent()
+                .remove(&DataKey::UserState(user.clone()));
         } else {
-            e.storage().persistent().set(&DataKey::UserState(user.clone()), &state);
-            e.storage().persistent().extend_ttl(&DataKey::UserState(user.clone()), 10000, 10000);
+            e.storage()
+                .persistent()
+                .set(&DataKey::UserState(user.clone()), &state);
+            e.storage()
+                .persistent()
+                .extend_ttl(&DataKey::UserState(user.clone()), 10000, 10000);
         }
         e.storage().instance().extend_ttl(10000, 10000);
 
@@ -360,10 +364,16 @@ impl StakingRewards {
         state.accrued_rewards = 0;
 
         if state.staked_amount == 0 {
-            e.storage().persistent().remove(&DataKey::UserState(user.clone()));
+            e.storage()
+                .persistent()
+                .remove(&DataKey::UserState(user.clone()));
         } else {
-            e.storage().persistent().set(&DataKey::UserState(user.clone()), &state);
-            e.storage().persistent().extend_ttl(&DataKey::UserState(user.clone()), 10000, 10000);
+            e.storage()
+                .persistent()
+                .set(&DataKey::UserState(user.clone()), &state);
+            e.storage()
+                .persistent()
+                .extend_ttl(&DataKey::UserState(user.clone()), 10000, 10000);
         }
         e.storage().instance().extend_ttl(10000, 10000);
 
@@ -392,7 +402,7 @@ impl StakingRewards {
 
         let config = Self::get_config(e.clone())?;
         let state_key = DataKey::UserState(user.clone());
-        
+
         if !e.storage().persistent().has(&state_key) {
             return Ok(0);
         }

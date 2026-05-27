@@ -91,18 +91,35 @@ export function ResultViewer({ result }: ResultViewerProps) {
         <div
           style={{
             backgroundColor: '#0d1117',
-            padding: '12px',
+            padding: '16px',
             borderRadius: '6px',
             marginBottom: '12px',
             fontSize: '13px',
-            color: '#fb8500',
-            fontFamily: 'monospace',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-all',
-            border: '1px solid #30363d',
+            border: '1px solid #fb8500',
           }}
         >
-          {result.error}
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ color: '#fb8500', fontWeight: '600', marginBottom: '4px' }}>
+              Error Details
+            </div>
+            <div
+              style={{
+                backgroundColor: '#1a1f26',
+                padding: '12px',
+                borderRadius: '4px',
+                color: '#f0883e',
+                fontFamily: 'monospace',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                border: '1px solid #30363d',
+              }}
+            >
+              {result.error}
+            </div>
+          </div>
+          <div style={{ fontSize: '12px', color: '#8b949e' }}>
+            💡 Tip: Check if the backend is running and all parameters are correct.
+          </div>
         </div>
       ) : (
         result.result && (

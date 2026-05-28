@@ -88,7 +88,8 @@ pub struct FeeUpdateScheduledEvent {
 // ── Grouped storage structs ───────────────────────────────────────────────────
 
 /// Core pool state stored as a single instance-storage entry.
-/// Replaces separate token, reserve, fee, and admin storage entries.
+/// Replaces 8 separate DataKey variants: TokenA, TokenB, ReserveA, ReserveB,
+/// TotalShares, FeeBasisPoints, BaseFeeBasisPoints, Admin, Paused.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PoolState {
@@ -100,6 +101,7 @@ pub struct PoolState {
     pub fee_bps: i128,
     pub base_fee_bps: i128,
     pub admin: Address,
+    pub paused: bool,
 }
 
 /// Oracle / fee-governance config stored as a single instance-storage entry.
@@ -205,6 +207,14 @@ fn save_pool(e: &Env, pool: &PoolState) {
     e.storage().instance().set(&DataKey::Pool, pool);
 }
 
+fn check_paused(pool: &PoolState) -> Result<(), Error> {
+    if pool.paused {
+        Err(Error::Paused)
+    } else {
+        Ok(())
+    }
+}
+
 fn check_not_operation_paused(e: &Env, operation: u32) -> Result<(), Error> {
     if EmergencyGuard::is_paused(e.clone(), operation) {
         Err(Error::Paused)
@@ -259,6 +269,7 @@ impl LiquidityPool {
                 fee_bps: DEFAULT_BASE_FEE_BPS,
                 base_fee_bps: DEFAULT_BASE_FEE_BPS,
                 admin,
+                paused: false,
             },
         );
         EmergencyGuard::initialize(e.clone(), vec![&e, admin], 1)
@@ -444,6 +455,15 @@ impl LiquidityPool {
         Ok(pending.new_fee_bps)
     }
 
+    /// Admin-only: pause or unpause the pool.
+    pub fn set_paused(e: Env, paused: bool) -> Result<(), Error> {
+        let mut pool = load_pool(&e)?;
+        pool.admin.require_auth();
+        pool.paused = paused;
+        save_pool(&e, &pool);
+        Ok(())
+    }
+
     pub fn get_admin(e: Env) -> Result<Address, Error> {
         Ok(load_pool(&e)?.admin)
     }
@@ -456,7 +476,12 @@ impl LiquidityPool {
         EmergencyGuard::get_threshold(e)
     }
 
-    pub fn guard_pause(e: Env, admin: Address, operation: u32, paused: bool) -> Result<(), Error> {
+    pub fn set_operation_paused(
+        e: Env,
+        admin: Address,
+        operation: u32,
+        paused: bool,
+    ) -> Result<(), Error> {
         EmergencyGuard::set_pause(e, admin, operation, paused).map_err(|_| Error::Unauthorized)
     }
 
@@ -466,10 +491,6 @@ impl LiquidityPool {
 
     pub fn resume(e: Env, approvers: Vec<Address>) -> Result<(), Error> {
         EmergencyGuard::resume(e, approvers).map_err(|_| Error::Unauthorized)
-    }
-
-    pub fn guard_is_paused(e: Env, operation: u32) -> bool {
-        EmergencyGuard::is_paused(e, operation)
     }
 
     pub fn add_admin(e: Env, approvers: Vec<Address>, new_admin: Address) -> Result<(), Error> {
@@ -517,6 +538,7 @@ impl LiquidityPool {
     pub fn deposit(e: Env, to: Address, amount_a: i128, amount_b: i128) -> Result<i128, Error> {
         // One read instead of 5 separate reads.
         let mut pool = load_pool(&e)?;
+        check_paused(&pool)?;
         check_not_operation_paused(&e, PauseType::DEPOSIT)?;
         to.require_auth();
 
@@ -575,6 +597,7 @@ impl LiquidityPool {
     pub fn swap(e: Env, to: Address, buy_a: bool, out: i128, in_max: i128) -> Result<i128, Error> {
         // One read instead of 5 separate reads.
         let mut pool = load_pool(&e)?;
+        check_paused(&pool)?;
         check_not_operation_paused(&e, PauseType::SWAP)?;
         to.require_auth();
 
@@ -652,6 +675,7 @@ impl LiquidityPool {
     pub fn withdraw(e: Env, to: Address, share_amount: i128) -> Result<(i128, i128), Error> {
         // One read instead of 4 separate reads.
         let mut pool = load_pool(&e)?;
+        check_paused(&pool)?;
         check_not_operation_paused(&e, PauseType::WITHDRAW)?;
         to.require_auth();
 
@@ -702,6 +726,7 @@ impl LiquidityPool {
     /// Burns LP shares without withdrawing token reserves.
     pub fn burn(e: Env, from: Address, amount: i128) -> Result<(), Error> {
         let mut pool = load_pool(&e)?;
+        check_paused(&pool)?;
         check_not_operation_paused(&e, PauseType::BURN)?;
         from.require_auth();
 
